@@ -1,0 +1,24 @@
+[project]
+name = "kuhn-poker-rl"
+version = "0.1.0"
+description = "A-parameter hypothesis testbed using Kuhn Poker"
+requires-python = ">= 3.10"
+dependencies = [
+    "numpy",
+    "matplotlib",
+]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64"]
+
+[tool.pixi.dependencies]
+python = ">=3.10"
+numpy = "*"
+matplotlib = "*"
+
+[tool.pixi.tasks]
+selfplay = "python train_selfplay.py --timesteps 500000"
+sweep = "python run_sweep.py --timesteps 500000 --seeds 5"
+analyze = "python analyze.py experiments/results/"
+test-env = "python -c \"from kuhn_env import *; test_exploitability(); print('All tests passed')\""
