@@ -61,15 +61,14 @@ def get_final_exploitability(runs: dict) -> list:
 
 
 def parse_experiment_name(name: str):
-    """Parse algo, strategy, A value from experiment directory name."""
-    # Format: ppo_uniform_A0.50 or buffered_thompson_A0.90
-    parts = name.split("_")
-    if len(parts) >= 3:
-        algo = parts[0]
-        strategy = parts[1]
-        a_match = re.search(r"A([\d.]+)", name)
-        a_val = float(a_match.group(1)) if a_match else None
-        return algo, strategy, a_val
+    """Parse algo, strategy, A value from experiment directory name.
+
+    Format: {algo}_{strategy}_A{value}
+    e.g. ppo_uniform_A0.50, buffered_thompson_loss_A0.90
+    """
+    m = re.match(r"^(ppo|buffered)_(.+)_A([\d.]+)$", name)
+    if m:
+        return m.group(1), m.group(2), float(m.group(3))
     return None, None, None
 
 
@@ -114,13 +113,18 @@ def plot_a_curve(data: dict, output_dir: Path):
 
 
 def plot_thompson_comparison(data: dict, output_dir: Path):
-    """Plot uniform vs Thompson at each A value."""
+    """Plot uniform vs Thompson vs Thompson-Loss at each A value."""
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    strat_configs = [
+        ("uniform", "tab:blue", "o", "Uniform"),
+        ("thompson", "tab:orange", "s", "Thompson"),
+        ("thompson_loss", "tab:green", "^", "Thompson (loss-seeking)"),
+    ]
 
     for ax, algo, title in [(axes[0], "ppo", "PPO"),
                              (axes[1], "buffered", "Buffered")]:
-        for strat, color, marker in [("uniform", "tab:blue", "o"),
-                                      ("thompson", "tab:orange", "s")]:
+        for strat, color, marker, label in strat_configs:
             a_vals, means, stds = [], [], []
             for name, runs in sorted(data.items()):
                 a, s, a_val = parse_experiment_name(name)
@@ -132,11 +136,11 @@ def plot_thompson_comparison(data: dict, output_dir: Path):
                         stds.append(np.std(vals))
             if a_vals:
                 ax.errorbar(a_vals, means, yerr=stds, marker=marker,
-                           label=strat.capitalize(), color=color, capsize=3)
+                           label=label, color=color, capsize=3)
 
         ax.set_xlabel("A")
         ax.set_ylabel("Exploitability")
-        ax.set_title(f"{title}: Uniform vs Thompson")
+        ax.set_title(f"{title}: Sampling Strategy Comparison")
         ax.legend()
         ax.grid(True, alpha=0.3)
 
@@ -157,6 +161,7 @@ def plot_timeseries(data: dict, output_dir: Path):
         ("ppo_uniform_A0.50", "PPO A=0.50", "tab:green"),
         ("ppo_uniform_A0.90", "PPO A=0.90", "tab:red"),
         ("ppo_thompson_A0.50", "PPO Thompson A=0.50", "tab:orange"),
+        ("ppo_thompson_loss_A0.50", "PPO Thompson-Loss A=0.50", "tab:purple"),
     ]
 
     for name, label, color in targets:
@@ -278,39 +283,45 @@ def print_summary_tables(data: dict):
             if vals:
                 print(f"{a_val:>6.2f} | {np.mean(vals):>8.4f} +/- {np.std(vals):<8.4f} | {len(vals):>5d}")
 
-    # Thompson comparison
-    print("\nThompson vs Uniform (PPO):")
-    print(f"{'A':>6s} | {'Uniform':>20s} | {'Thompson':>20s} | {'Improvement':>12s}")
-    print("-" * 70)
+    # 3-way Thompson comparison (PPO)
+    print("\nSampling Strategy Comparison (PPO):")
+    print(f"{'A':>6s} | {'Uniform':>20s} | {'Thompson':>20s} | {'Thompson-Loss':>20s}")
+    print("-" * 80)
     for a_val in [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9]:
         u_name = f"ppo_uniform_A{a_val:.2f}"
         t_name = f"ppo_thompson_A{a_val:.2f}"
-        if u_name in data and t_name in data:
-            u_vals = get_final_exploitability(data[u_name])
-            t_vals = get_final_exploitability(data[t_name])
-            if u_vals and t_vals:
-                u_mean = np.mean(u_vals)
-                t_mean = np.mean(t_vals)
-                imp = (u_mean - t_mean) / u_mean * 100 if u_mean > 0 else 0
-                print(f"{a_val:>6.2f} | {u_mean:>8.4f} +/- {np.std(u_vals):<8.4f} | "
-                      f"{t_mean:>8.4f} +/- {np.std(t_vals):<8.4f} | {imp:>10.1f}%")
+        tl_name = f"ppo_thompson_loss_A{a_val:.2f}"
+        parts = []
+        for name in [u_name, t_name, tl_name]:
+            if name in data:
+                vals = get_final_exploitability(data[name])
+                if vals:
+                    parts.append(f"{np.mean(vals):>8.4f} +/- {np.std(vals):<8.4f}")
+                else:
+                    parts.append("       N/A          ")
+            else:
+                parts.append("       N/A          ")
+        print(f"{a_val:>6.2f} | {parts[0]} | {parts[1]} | {parts[2]}")
 
-    # Thompson comparison (Buffered)
-    print("\nThompson vs Uniform (Buffered):")
-    print(f"{'A':>6s} | {'Uniform':>20s} | {'Thompson':>20s} | {'Improvement':>12s}")
-    print("-" * 70)
+    # 3-way Thompson comparison (Buffered)
+    print("\nSampling Strategy Comparison (Buffered):")
+    print(f"{'A':>6s} | {'Uniform':>20s} | {'Thompson':>20s} | {'Thompson-Loss':>20s}")
+    print("-" * 80)
     for a_val in [0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9]:
         u_name = f"buffered_uniform_A{a_val:.2f}"
         t_name = f"buffered_thompson_A{a_val:.2f}"
-        if u_name in data and t_name in data:
-            u_vals = get_final_exploitability(data[u_name])
-            t_vals = get_final_exploitability(data[t_name])
-            if u_vals and t_vals:
-                u_mean = np.mean(u_vals)
-                t_mean = np.mean(t_vals)
-                imp = (u_mean - t_mean) / u_mean * 100 if u_mean > 0 else 0
-                print(f"{a_val:>6.2f} | {u_mean:>8.4f} +/- {np.std(u_vals):<8.4f} | "
-                      f"{t_mean:>8.4f} +/- {np.std(t_vals):<8.4f} | {imp:>10.1f}%")
+        tl_name = f"buffered_thompson_loss_A{a_val:.2f}"
+        parts = []
+        for name in [u_name, t_name, tl_name]:
+            if name in data:
+                vals = get_final_exploitability(data[name])
+                if vals:
+                    parts.append(f"{np.mean(vals):>8.4f} +/- {np.std(vals):<8.4f}")
+                else:
+                    parts.append("       N/A          ")
+            else:
+                parts.append("       N/A          ")
+        print(f"{a_val:>6.2f} | {parts[0]} | {parts[1]} | {parts[2]}")
 
 
 def main():

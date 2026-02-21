@@ -23,8 +23,8 @@ def main():
     parser.add_argument("--seeds", type=int, default=10)
     parser.add_argument("--parallel", type=int, default=8)
     parser.add_argument("--a-values", type=str, default="0.05,0.1,0.2,0.3,0.5,0.7,0.9")
-    parser.add_argument("--sampling-strategy", type=str, default="both",
-                        choices=["uniform", "thompson", "both"])
+    parser.add_argument("--sampling-strategy", type=str, default="all",
+                        choices=["uniform", "thompson", "thompson_loss", "both", "all"])
     parser.add_argument("--algorithms", type=str, default="both",
                         choices=["ppo", "buffered", "both"])
     parser.add_argument("--include-selfplay", action="store_true", default=True)
@@ -34,7 +34,9 @@ def main():
     a_values = [float(x) for x in args.a_values.split(",")]
     seeds = list(range(args.seeds))
 
-    if args.sampling_strategy == "both":
+    if args.sampling_strategy == "all":
+        strategies = ["uniform", "thompson", "thompson_loss"]
+    elif args.sampling_strategy == "both":
         strategies = ["uniform", "thompson"]
     else:
         strategies = [args.sampling_strategy]

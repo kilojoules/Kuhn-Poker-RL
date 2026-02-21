@@ -42,7 +42,7 @@ class OpponentZoo:
         if not self.checkpoints:
             raise ValueError("Zoo is empty")
 
-        if self.sampling_strategy == "thompson" and len(self.checkpoints) > 1:
+        if self.sampling_strategy in ("thompson", "thompson_loss") and len(self.checkpoints) > 1:
             thetas = [np.random.beta(a, b) for a, b in zip(self.alphas, self.betas)]
             idx = int(np.argmax(thetas))
         else:
@@ -54,13 +54,27 @@ class OpponentZoo:
         return agent, idx
 
     def update_outcome(self, idx: int, mean_reward: float):
-        """Update Beta posterior based on match competitiveness."""
+        """Update Beta posterior based on match outcome.
+
+        - "thompson": success = competitive match (|reward| < threshold).
+          Prefers opponents that produce close games.
+        - "thompson_loss": success = agent lost (reward < -threshold).
+          Prefers opponents that beat the agent, providing corrective signal.
+        """
         if idx < 0 or idx >= len(self.checkpoints):
             return
-        if abs(mean_reward) < self.competitiveness_threshold:
-            self.alphas[idx] += 1.0
+        if self.sampling_strategy == "thompson_loss":
+            # Loss-seeking: success when the agent LOSES to this opponent
+            if mean_reward < -self.competitiveness_threshold:
+                self.alphas[idx] += 1.0
+            else:
+                self.betas[idx] += 1.0
         else:
-            self.betas[idx] += 1.0
+            # Standard Thompson: success when match is competitive
+            if abs(mean_reward) < self.competitiveness_threshold:
+                self.alphas[idx] += 1.0
+            else:
+                self.betas[idx] += 1.0
 
     def ts_diagnostics(self) -> Dict[str, float]:
         if not self.alphas:

@@ -155,7 +155,7 @@ def main():
     parser.add_argument("--output-dir", type=str, default="experiments/results/zoo")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--sampling-strategy", type=str, default="uniform",
-                        choices=["uniform", "thompson"])
+                        choices=["uniform", "thompson", "thompson_loss"])
     parser.add_argument("--competitiveness-threshold", type=float, default=0.3)
     parser.add_argument("--a-schedule", type=str, default="constant",
                         choices=["constant", "exponential", "linear", "sigmoid",
