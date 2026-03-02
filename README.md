@@ -6,7 +6,8 @@ A-parameter hypothesis testbed using Kuhn Poker — a sequel to [RPS_RL](https:/
 
 ## The A Parameter
 
-A = probability of sampling an opponent from the historical zoo (vs. playing the latest opponent):
+A = probability of sampling an opponent from the historical zoo (vs. playing the latest opponent). See [AI-Plays-Tag](https://github.com/kilojoules/AI-Plays-Tag#the-a-parameter) for the full definition and cross-game comparison.
+
 - **A=0**: Self-play — always play latest opponent, no zoo.
 - **A in (0, 1)**: Mix of latest opponent + zoo sampling.
 - **A near 1**: Almost always sample from zoo.
@@ -252,3 +253,12 @@ Kuhn-Poker-RL/
 ├── pyproject.toml         # Pixi project configuration
 └── experiments/results/   # Sweep results and plots
 ```
+
+## Related Projects
+
+This experiment is part of a series investigating zoo sampling and gauntlet-style evaluation across different games:
+
+- **[AI-Plays-Tag](https://github.com/kilojoules/AI-Plays-Tag)** — The flagship experiment. Zoo training improves seeker win rate in 18/20 game configurations, with the largest gains in hard games where catastrophic forgetting is strongest. Contains the canonical definition of the A parameter.
+- **[RPS_RL](https://github.com/kilojoules/RPS_RL)** — The cheap testbed that established the A-parameter hypothesis. Zoo sampling breaks co-adaptation cycles in Rock-Paper-Scissors — every finding that inverts here in Kuhn Poker.
+- **[REDKWEEN](https://github.com/kilojoules/REDKWEEN)** — Automated LLM red teaming via self-play. Defense always wins; zoo sampling for adversary diversity is an open question.
+- **[Adversarial Self-Play for Wind Farm Control](https://julianquick.com/ML/adversarial.html)** — The original motivation: comparing Arms Race, SSP, and Self-Play training topologies for robust wind farm controllers.
